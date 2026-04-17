@@ -1,0 +1,386 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <base target="_self">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shortest Path Finder - Dijkstra's Algorithm</title>
+    <meta name="description" content="Interactive visualization of Dijkstra's algorithm for finding shortest paths in graphs">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#3b82f6",
+                        secondary: "#1e40af",
+                        accent: "#10b981",
+                        visited: "#fbbf24",
+                        path: "#ef4444",
+                        start: "#10b981",
+                        end: "#ef4444"
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .node {
+            transition: all 0.3s ease;
+        }
+        .node:hover {
+            transform: scale(1.1);
+        }
+        .edge {
+            transition: stroke-width 0.3s ease;
+        }
+        .edge:hover {
+            stroke-width: 4;
+        }
+        .algorithm-step {
+            transition: all 0.3s ease;
+        }
+        .algorithm-step.active {
+            background-color: #dbeafe;
+            border-left: 4px solid #3b82f6;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-50 text-gray-800">
+    <header class="bg-white shadow-md">
+        <nav class="container mx-auto px-4 py-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="flex items-center mb-4 md:mb-0">
+                    <div class="w-10 h-10 bg-primary rounded-full flex items-center justify-center mr-3">
+                        <i class="fas fa-route text-white"></i>
+                    </div>
+                    <h1 class="text-2xl font-bold text-gray-800">Dijkstra's Path Finder</h1>
+                </div>
+                <ul id="nav-list" class="flex flex-wrap gap-4 md:gap-6"></ul>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto px-4 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left Panel: Controls and Information -->
+            <div class="lg:col-span-1 space-y-6">
+                <div class="bg-white rounded-xl shadow-md p-6">
+                    <h2 class="text-xl font-bold mb-4 text-gray-800">Controls</h2>
+                    <div class="space-y-4">
+                        <div class="flex flex-wrap gap-2">
+                            <button id="btn-add-node" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-secondary transition">
+                                <i class="fas fa-plus mr-2"></i>Add Node
+                            </button>
+                            <button id="btn-add-edge" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition">
+                                <i class="fas fa-link mr-2"></i>Add Edge
+                            </button>
+                            <button id="btn-clear" class="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition">
+                                <i class="fas fa-trash mr-2"></i>Clear
+                            </button>
+                        </div>
+                        
+                        <div class="pt-4 border-t">
+                            <h3 class="font-semibold mb-2">Select Nodes</h3>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Start Node</label>
+                                    <select id="select-start" class="w-full p-2 border rounded-lg"></select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">End Node</label>
+                                    <select id="select-end" class="w-full p-2 border rounded-lg"></select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="pt-4 border-t">
+                            <button id="btn-run" class="w-full px-4 py-3 bg-accent text-white rounded-lg hover:bg-green-600 transition font-semibold">
+                                <i class="fas fa-play mr-2"></i>Run Dijkstra's Algorithm
+                            </button>
+                            <button id="btn-step" class="w-full mt-2 px-4 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition">
+                                <i class="fas fa-step-forward mr-2"></i>Step Through
+                            </button>
+                            <button id="btn-reset" class="w-full mt-2 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">
+                                <i class="fas fa-redo mr-2"></i>Reset Visualization
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-md p-6">
+                    <h2 class="text-xl font-bold mb-4 text-gray-800">Algorithm Steps</h2>
+                    <div id="algorithm-steps" class="space-y-2 max-h-80 overflow-y-auto"></div>
+                </div>
+            </div>
+
+            <!-- Center Panel: Graph Visualization -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-xl shadow-md p-4 h-full">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold text-gray-800">Graph Visualization</h2>
+                        <div class="flex items-center space-x-2">
+                            <div class="flex items-center">
+                                <div class="w-4 h-4 rounded-full bg-start mr-2"></div>
+                                <span class="text-sm">Start Node</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-4 h-4 rounded-full bg-end mr-2"></div>
+                                <span class="text-sm">End Node</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-4 h-4 rounded-full bg-visited mr-2"></div>
+                                <span class="text-sm">Visited</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-4 h-4 rounded-full bg-path mr-2"></div>
+                                <span class="text-sm">Shortest Path</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 relative overflow-hidden" style="height: 500px;">
+                        <svg id="graph-svg" class="w-full h-full"></svg>
+                        <div id="node-container" class="absolute inset-0"></div>
+                        <div id="instructions" class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div class="text-center p-8 bg-white/90 rounded-xl shadow-lg max-w-md">
+                                <i class="fas fa-mouse-pointer text-4xl text-primary mb-4"></i>
+                                <h3 class="text-xl font-bold mb-2">Get Started</h3>
+                                <p class="text-gray-600 mb-4">Click "Add Node" to place nodes, then "Add Edge" to connect them with weights.</p>
+                                <p class="text-sm text-gray-500">Select start and end nodes, then run the algorithm!</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-blue-50 p-4 rounded-lg">
+                            <h3 class="font-semibold text-blue-800 mb-1">Shortest Path</h3>
+                            <p id="path-result" class="text-lg font-bold">Not calculated yet</p>
+                        </div>
+                        <div class="bg-green-50 p-4 rounded-lg">
+                            <h3 class="font-semibold text-green-800 mb-1">Total Distance</h3>
+                            <p id="distance-result" class="text-lg font-bold">-</p>
+                        </div>
+                        <div class="bg-purple-50 p-4 rounded-lg">
+                            <h3 class="font-semibold text-purple-800 mb-1">Nodes Visited</h3>
+                            <p id="visited-count" class="text-lg font-bold">0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Algorithm Explanation -->
+        <div class="mt-8 bg-white rounded-xl shadow-md p-6">
+            <h2 class="text-2xl font-bold mb-6 text-gray-800">Dijkstra's Algorithm Explained</h2>
+            <div id="explanation-content" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-800 text-white mt-12">
+        <div class="container mx-auto px-4 py-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div>
+                    <h3 class="text-xl font-bold mb-4">Dijkstra's Path Finder</h3>
+                    <p class="text-gray-300">Interactive visualization of Dijkstra's algorithm for educational purposes.</p>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4">Quick Links</h4>
+                    <ul id="footer-links" class="space-y-2"></ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4">About the Algorithm</h4>
+                    <p class="text-gray-300 text-sm">Dijkstra's algorithm finds the shortest path between nodes in a graph, which may represent road networks, communication systems, or other connection-based problems.</p>
+                </div>
+            </div>
+            <div class="border-t border-gray-700 mt-8 pt-6 text-center text-gray-400">
+                <p>Created for educational purposes • Dijkstra's Algorithm Visualization</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Data layer
+        const navigationItems = [
+            { "label": "Home", "href": "#home", "icon": "fas fa-home" },
+            { "label": "Visualization", "href": "#visualization", "icon": "fas fa-project-diagram" },
+            { "label": "Algorithm", "href": "#algorithm", "icon": "fas fa-code" },
+            { "label": "Examples", "href": "#examples", "icon": "fas fa-list" }
+        ];
+
+        const explanationItems = [
+            {
+                "title": "What is Dijkstra's Algorithm?",
+                "content": "Dijkstra's algorithm is a graph search algorithm that solves the single-source shortest path problem for a graph with non-negative edge weights, producing a shortest path tree.",
+                "icon": "fas fa-question-circle"
+            },
+            {
+                "title": "How it Works",
+                "content": "1. Assign tentative distance values to all nodes (0 for start, ∞ for others)<br>2. Mark all nodes unvisited<br>3. For current node, consider all unvisited neighbors<br>4. Calculate tentative distances through current node<br>5. Mark current node as visited<br>6. Select unvisited node with smallest tentative distance as new current node<br>7. Repeat until destination is visited",
+                "icon": "fas fa-cogs"
+            },
+            {
+                "title": "Time Complexity",
+                "content": "The time complexity depends on the data structure used:<br>• Simple array: O(V²)<br>• Binary heap: O((V+E) log V)<br>• Fibonacci heap: O(E + V log V)<br>Where V = vertices, E = edges",
+                "icon": "fas fa-clock"
+            },
+            {
+                "title": "Applications",
+                "content": "• GPS navigation systems<br>• Network routing protocols<br>• Social network analysis<br>• Transportation planning<br>• Game development for AI pathfinding",
+                "icon": "fas fa-rocket"
+            }
+        ];
+
+        const footerLinks = [
+            { "label": "GitHub Repository", "href": "https://github.com", "icon": "fab fa-github" },
+            { "label": "Documentation", "href": "#docs", "icon": "fas fa-book" },
+            { "label": "About Dijkstra", "href": "#about", "icon": "fas fa-user" },
+            { "label": "Contact", "href": "#contact", "icon": "fas fa-envelope" }
+        ];
+
+        // Graph data
+        let nodes = [];
+        let edges = [];
+        let graphState = {
+            mode: 'add-node', // 'add-node', 'add-edge', 'select'
+            selectedNode: null,
+            startNode: null,
+            endNode: null,
+            isRunning: false,
+            stepIndex: 0
+        };
+
+        // Algorithm data
+        let algorithmSteps = [];
+        let distances = {};
+        let previous = {};
+        let visited = new Set();
+        let unvisited = new Set();
+
+        // Reusable render functions
+        function renderNavItems(items) {
+            return items.map(item => 
+                `<li>
+                    <a href="${item.href}" class="flex items-center text-gray-600 hover:text-primary transition">
+                        <i class="${item.icon} mr-2"></i>
+                        ${item.label}
+                    </a>
+                </li>`
+            ).join("");
+        }
+
+        function renderExplanationItems(items) {
+            return items.map(item => 
+                `<div class="bg-gray-50 p-4 rounded-lg">
+                    <div class="flex items-start mb-3">
+                        <i class="${item.icon} text-primary text-xl mr-3 mt-1"></i>
+                        <h3 class="text-lg font-semibold">${item.title}</h3>
+                    </div>
+                    <p class="text-gray-600">${item.content}</p>
+                </div>`
+            ).join("");
+        }
+
+        function renderFooterLinks(items) {
+            return items.map(item => 
+                `<li>
+                    <a href="${item.href}" class="text-gray-300 hover:text-white transition flex items-center">
+                        <i class="${item.icon} mr-2"></i>
+                        ${item.label}
+                    </a>
+                </li>`
+            ).join("");
+        }
+
+        function renderAlgorithmSteps(steps) {
+            return steps.map((step, index) => 
+                `<div class="algorithm-step p-3 rounded-lg ${index === graphState.stepIndex ? 'active' : 'bg-gray-50'}">
+                    <div class="flex justify-between items-center">
+                        <span class="font-medium">Step ${index + 1}</span>
+                        <span class="text-xs px-2 py-1 rounded ${step.type === 'visit' ? 'bg-visited/20 text-amber-800' : step.type === 'path' ? 'bg-path/20 text-red-800' : 'bg-primary/20 text-blue-800'}">${step.type}</span>
+                    </div>
+                    <p class="text-sm mt-1">${step.description}</p>
+                </div>`
+            ).join("");
+        }
+
+        function renderNodeSelectOptions() {
+            const startSelect = document.getElementById('select-start');
+            const endSelect = document.getElementById('select-end');
+            
+            const options = nodes.map(node => 
+                `<option value="${node.id}" ${node.id === graphState.startNode ? 'selected' : ''} ${node.id === graphState.endNode ? 'selected' : ''}>
+                    Node ${node.id} (${node.label})
+                </option>`
+            ).join("");
+            
+            const defaultOption = '<option value="">Select a node</option>';
+            
+            startSelect.innerHTML = defaultOption + options;
+            endSelect.innerHTML = defaultOption + options;
+            
+            if (graphState.startNode) startSelect.value = graphState.startNode;
+            if (graphState.endNode) endSelect.value = graphState.endNode;
+        }
+
+        // Graph rendering functions
+        function renderGraph() {
+            const svg = document.getElementById('graph-svg');
+            const nodeContainer = document.getElementById('node-container');
+            
+            // Clear previous rendering
+            svg.innerHTML = '';
+            nodeContainer.innerHTML = '';
+            
+            // Render edges
+            edges.forEach(edge => {
+                const fromNode = nodes.find(n => n.id === edge.from);
+                const toNode = nodes.find(n => n.id === edge.to);
+                
+                if (!fromNode || !toNode) return;
+                
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', fromNode.x);
+                line.setAttribute('y1', fromNode.y);
+                line.setAttribute('x2', toNode.x);
+                line.setAttribute('y2', toNode.y);
+                line.setAttribute('stroke', '#9ca3af');
+                line.setAttribute('stroke-width', '2');
+                line.setAttribute('class', 'edge');
+                line.setAttribute('data-edge-id', `${edge.from}-${edge.to}`);
+                
+                // Add weight label
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                const midX = (fromNode.x + toNode.x) / 2;
+                const midY = (fromNode.y + toNode.y) / 2;
+                text.setAttribute('x', midX);
+                text.setAttribute('y', midY - 10);
+                text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('fill', '#374151');
+                text.setAttribute('font-weight', 'bold');
+                text.setAttribute('font-size', '14');
+                text.textContent = edge.weight;
+                
+                svg.appendChild(line);
+                svg.appendChild(text);
+            });
+            
+            // Render nodes
+            nodes.forEach(node => {
+                const nodeElement = document.createElement('div');
+                nodeElement.className = `node absolute w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transform -translate-x-1/2 -translate-y-1/2 shadow-lg ${getNodeClass(node)}`;
+                nodeElement.style.left = `${node.x}px`;
+                nodeElement.style.top = `${node.y}px`;
+                nodeElement.setAttribute('data-node-id', node.id);
+                nodeElement.innerHTML = `
+                    <div class="text-white font-bold">${node.label}</div>
+                    ${node.id === graphState.startNode ? '<div class="absolute -top-1 -right-1 w-4 h-4 bg-start rounded-full"></div>' : ''}
+                    ${node.id === graphState.endNode ? '<div class="absolute -top-1 -right-1 w-4 h-4 bg-end rounded-full"></div>' : ''}
+                `;
+                
+                nodeElement.addEventListener('click',
